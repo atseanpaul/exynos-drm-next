@@ -742,6 +742,15 @@ static void hdmi_reg_infoframe(struct hdmi_context *hdata,
 	}
 }
 
+static int hdmi_initialize(void *ctx, struct drm_device *drm_dev)
+{
+	struct hdmi_context *hdata = ctx;
+
+	hdata->drm_dev = drm_dev;
+
+	return 0;
+}
+
 static bool hdmi_is_connected(void *ctx)
 {
 	struct hdmi_context *hdata = ctx;
@@ -1747,6 +1756,7 @@ static void hdmi_dpms(void *ctx, int mode)
 
 static struct exynos_hdmi_ops hdmi_ops = {
 	/* display */
+	.initialize	= hdmi_initialize,
 	.is_connected	= hdmi_is_connected,
 	.get_edid	= hdmi_get_edid,
 	.check_mode	= hdmi_check_mode,
@@ -1767,8 +1777,8 @@ static irqreturn_t hdmi_irq_thread(int irq, void *arg)
 	hdata->hpd = gpio_get_value(hdata->hpd_gpio);
 	mutex_unlock(&hdata->hdmi_mutex);
 
-	if (ctx->drm_dev)
-		drm_helper_hpd_irq_event(ctx->drm_dev);
+	if (hdata->drm_dev)
+		drm_helper_hpd_irq_event(hdata->drm_dev);
 
 	return IRQ_HANDLED;
 }
@@ -2026,8 +2036,8 @@ static int hdmi_suspend(struct device *dev)
 	disable_irq(hdata->irq);
 
 	hdata->hpd = false;
-	if (ctx->drm_dev)
-		drm_helper_hpd_irq_event(ctx->drm_dev);
+	if (hdata->drm_dev)
+		drm_helper_hpd_irq_event(hdata->drm_dev);
 
 	if (pm_runtime_suspended(dev)) {
 		DRM_DEBUG_KMS("Already suspended\n");
