@@ -685,20 +685,25 @@ static void mixer_win_reset(struct mixer_context *ctx)
 	spin_unlock_irqrestore(&res->reg_slock, flags);
 }
 
+static int mixer_initialize(void *ctx, struct drm_device *drm_dev)
+{
+	struct mixer_context *mixer_ctx = ctx;
+
+	mixer_ctx->drm_dev = drm_dev;
+
+	return 0;
+}
+
 static int mixer_iommu_on(void *ctx, bool enable)
 {
-	struct exynos_drm_hdmi_context *drm_hdmi_ctx;
 	struct mixer_context *mdata = ctx;
-	struct drm_device *drm_dev;
 
-	drm_hdmi_ctx = mdata->parent_ctx;
-	drm_dev = drm_hdmi_ctx->drm_dev;
-
-	if (is_drm_iommu_supported(drm_dev)) {
+	if (is_drm_iommu_supported(mdata->drm_dev)) {
 		if (enable)
-			return drm_iommu_attach_device(drm_dev, mdata->dev);
+			return drm_iommu_attach_device(mdata->drm_dev,
+					mdata->dev);
 
-		drm_iommu_detach_device(drm_dev, mdata->dev);
+		drm_iommu_detach_device(mdata->drm_dev, mdata->dev);
 	}
 	return 0;
 }
@@ -970,6 +975,7 @@ static void mixer_dpms(void *ctx, int mode)
 
 static struct exynos_mixer_ops mixer_ops = {
 	/* manager */
+	.initialize		= mixer_initialize,
 	.iommu_on		= mixer_iommu_on,
 	.enable_vblank		= mixer_enable_vblank,
 	.disable_vblank		= mixer_disable_vblank,
@@ -985,8 +991,7 @@ static struct exynos_mixer_ops mixer_ops = {
 
 static irqreturn_t mixer_irq_handler(int irq, void *arg)
 {
-	struct exynos_drm_hdmi_context *drm_hdmi_ctx = arg;
-	struct mixer_context *ctx = drm_hdmi_ctx->ctx;
+	struct mixer_context *ctx = arg;
 	struct mixer_resources *res = &ctx->mixer_res;
 	u32 val, base, shadow;
 
@@ -994,6 +999,9 @@ static irqreturn_t mixer_irq_handler(int irq, void *arg)
 
 	/* read interrupt status for handling and clearing flags for VSYNC */
 	val = mixer_reg_read(res, MXR_INT_STATUS);
+
+	if (!ctx->drm_dev)
+		goto out;
 
 	/* handling VSYNC */
 	if (val & MXR_INT_STATUS_VSYNC) {
@@ -1010,9 +1018,8 @@ static irqreturn_t mixer_irq_handler(int irq, void *arg)
 				goto out;
 		}
 
-		drm_handle_vblank(drm_hdmi_ctx->drm_dev, ctx->pipe);
-		exynos_drm_crtc_finish_pageflip(drm_hdmi_ctx->drm_dev,
-				ctx->pipe);
+		drm_handle_vblank(ctx->drm_dev, ctx->pipe);
+		exynos_drm_crtc_finish_pageflip(ctx->drm_dev, ctx->pipe);
 
 		/* set wait vsync event to zero and wake up queue. */
 		if (atomic_read(&ctx->wait_vsync_event)) {
@@ -1077,7 +1084,7 @@ static int mixer_resources_init(struct exynos_drm_hdmi_context *ctx,
 	}
 
 	ret = devm_request_irq(dev, res->start, mixer_irq_handler,
-							0, "drm_mixer", ctx);
+						0, "drm_mixer", mixer_ctx);
 	if (ret) {
 		dev_err(dev, "request interrupt failed.\n");
 		return ret;
