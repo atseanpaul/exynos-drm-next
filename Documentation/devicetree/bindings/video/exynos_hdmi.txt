@@ -12,6 +12,8 @@ Required properties:
 	a) phandle of the gpio controller node.
 	b) pin number within the gpio controller.
 	c) optional flags and pull up/down.
+- ddc: phandle to the hdmi ddc node
+- phy: phandle to the hdmi phy node
 
 Example:
 
@@ -20,4 +22,6 @@ Example:
 		reg = <0x14530000 0x100000>;
 		interrupts = <0 95 0>;
 		hpd-gpio = <&gpx3 7 1>;
+		ddc = <&hdmi_ddc_node>;
+		phy = <&hdmi_phy_node>;
 	};
