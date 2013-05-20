@@ -159,6 +159,8 @@ clock which they consume.
   mixer			343
   hdmi			344
   g2d			345
+  g3d			346
+  aclk_400_g3d		347
 
 
    [Clock Muxes]
@@ -166,7 +168,6 @@ clock which they consume.
   Clock			ID
   ----------------------------
   mout_hdmi		1024
-
 
 Example 1: An example of a clock controller node is listed below.
 
