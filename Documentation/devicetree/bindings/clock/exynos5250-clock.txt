@@ -24,6 +24,7 @@ clock which they consume.
   ----------------------------
 
   fin_pll		1
+  sclk_vpll		2
 
   [Clock Gate for Special Clocks]
 
@@ -154,9 +155,17 @@ clock which they consume.
   dsim0			341
   dp			342
   mixer			343
-  hdmi			345
-  g3d			344
-  aclk_400_g3d		345
+  hdmi			344
+  g3d			345
+  aclk_400_g3d		346
+
+
+   [Clock Muxes]
+
+  Clock			ID
+  ----------------------------
+  mout_hdmi		1024
+  mout_fimd1		1025
 
 Example 1: An example of a clock controller node is listed below.
 
