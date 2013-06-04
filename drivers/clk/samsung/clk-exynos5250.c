@@ -102,7 +102,7 @@ enum exynos5250_clks {
 
 	/* core clocks */
 	fin_pll, fout_apll, fout_mpll, fout_bpll, fout_gpll, fout_cpll,
-	fout_epll, fout_vpll, sclk_vpll, sclk_epll,
+	fout_epll, fout_vpll, sclk_vpll, sclk_epll, sclk_gpll,
 
 	/* gate for special clocks (sclk) */
 	sclk_cam_bayer = 128, sclk_cam0, sclk_cam1, sclk_gscl_wa, sclk_gscl_wb,
@@ -260,7 +260,7 @@ static struct samsung_mux_clock exynos5250_mux_clks[] __initdata = {
 	MUX(none, "mout_aclk333", mout_aclk166_p, SRC_TOP0, 16, 1),
 	MUX(none, "mout_aclk200", mout_aclk200_p, SRC_TOP0, 12, 1),
 	MUX(none, "aclk_400_g3d_mid", mout_aclk200_p, SRC_TOP0, 20, 1),
-	MUX(none, "sclk_gpll", mout_gpll_p, SRC_TOP2, 28, 1),
+	MUX(sclk_gpll, "sclk_gpll", mout_gpll_p, SRC_TOP2, 28, 1),
 	MUX(none, "mout_aclk400", mout_aclk400_p, SRC_TOP1, 28, 1),
 	MUX(none, "mout_cam_bayer", mout_group1_p, SRC_GSCL, 12, 4),
 	MUX(none, "mout_cam0", mout_group1_p, SRC_GSCL, 16, 4),
@@ -574,7 +574,7 @@ static void __init exynos5250_clk_init(struct device_node *np)
 			ARRAY_SIZE(exynos5250_fixed_rate_ext_clks),
 			ext_clk_match);
 	samsung_clk_register_mux(exynos5250_pll_pmux_clks,
-				ARRAY_SIZE(exynos5250_pll_pmux_clks));
+			ARRAY_SIZE(exynos5250_pll_pmux_clks));
 
 	if (_get_rate("fin_pll") == 24 * MHZ)
 		exynos5250_plls[epll].rate_table = epll_24mhz_tbl;
