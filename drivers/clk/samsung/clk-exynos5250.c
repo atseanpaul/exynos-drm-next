@@ -81,7 +81,7 @@ enum exynos5250_clks {
 	none,
 
 	/* core clocks */
-	fin_pll, sclk_vpll,
+	fin_pll, sclk_vpll, fout_epll, sclk_epll,
 
 	/* gate for special clocks (sclk) */
 	sclk_cam_bayer = 128, sclk_cam0, sclk_cam1, sclk_gscl_wa, sclk_gscl_wb,
@@ -104,7 +104,7 @@ enum exynos5250_clks {
 	wdt, rtc, tmu, fimd1, mie1, dsim0, dp, mixer, hdmi, g3d, aclk_400_g3d,
 
 	/* mux clocks */
-	mout_hdmi = 1024, mout_fimd1,
+	mout_hdmi = 1024, mout_fimd1, mout_audio0,
 
 	nr_clks,
 };
@@ -223,14 +223,11 @@ struct samsung_mux_clock exynos5250_mux_clks[] __initdata = {
 	MUX_A(none, "sclk_mpll", mout_mpll_p, SRC_CORE1, 8, 1, "mout_mpll"),
 	MUX(none, "mout_bpll_fout", mout_bpll_fout_p, PLL_DIV2_SEL, 0, 1),
 	MUX(none, "sclk_bpll", mout_bpll_p, SRC_CDREX, 0, 1),
-<<<<<<< HEAD
 	MUX(none, "mout_vpllsrc", mout_vpllsrc_p, SRC_TOP2, 0, 1),
-	MUX(none, "sclk_vpll", mout_vpll_p, SRC_TOP2, 16, 1),
-=======
 	MUX_F(sclk_vpll, "sclk_vpll", mout_vpll_p, SRC_TOP2, 16, 1,
 						CLK_SET_RATE_PARENT, 0),
->>>>>>> 28c399a... clocks: exynos: Add clock ids for display clocks on Exyno5250
-	MUX(none, "sclk_epll", mout_epll_p, SRC_TOP2, 12, 1),
+	MUX_F(sclk_epll, "sclk_epll", mout_epll_p, SRC_TOP2, 12, 1,
+						CLK_SET_RATE_PARENT, 0),
 	MUX(none, "sclk_cpll", mout_cpll_p, SRC_TOP2, 8, 1),
 	MUX(none, "sclk_mpll_user", mout_mpll_user_p, SRC_TOP2, 20, 1),
 	MUX(none, "sclk_bpll_user", mout_bpll_user_p, SRC_TOP2, 24, 1),
@@ -249,8 +246,9 @@ struct samsung_mux_clock exynos5250_mux_clks[] __initdata = {
 						CLK_SET_RATE_PARENT, 0),
 	MUX(none, "mout_mipi1", mout_group1_p, SRC_DISP1_0, 12, 4),
 	MUX(none, "mout_dp", mout_group1_p, SRC_DISP1_0, 16, 4),
-	MUX(none, "mout_hdmi", mout_hdmi_p, SRC_DISP1_0, 20, 1),
-	MUX(none, "mout_audio0", mout_audio0_p, SRC_MAU, 0, 4),
+	MUX(mout_hdmi, "mout_hdmi", mout_hdmi_p, SRC_DISP1_0, 20, 1),
+	MUX_F(mout_audio0, "mout_audio0", mout_audio0_p, SRC_MAU, 0, 4,
+						CLK_SET_RATE_PARENT, 0),
 	MUX(none, "mout_mmc0", mout_group1_p, SRC_FSYS, 0, 4),
 	MUX(none, "mout_mmc1", mout_group1_p, SRC_FSYS, 4, 4),
 	MUX(none, "mout_mmc2", mout_group1_p, SRC_FSYS, 8, 4),
@@ -520,11 +518,30 @@ void __init exynos5250_clk_init(struct device_node *np)
 	gpll = samsung_clk_register_pll35xx("fout_gpll", "fin_pll",
 			reg_base + 0x10150);
 	cpll = samsung_clk_register_pll35xx("fout_cpll", "fin_pll",
-			reg_base + 0x10120);
-	epll = samsung_clk_register_pll36xx("fout_epll", "fin_pll",
-			reg_base + 0x10130);
-	vpll = samsung_clk_register_pll36xx("fout_vpll", "mout_vpllsrc",
-			reg_base + 0x10140);
+			reg_base + 0x10020, NULL, 0);
+
+	if (fin_pll_rate == (24 * MHZ)) {
+		epll = samsung_clk_register_pll36xx("fout_epll", "fin_pll",
+				reg_base + 0x10030, epll_24mhz_tbl,
+				ARRAY_SIZE(epll_24mhz_tbl));
+	} else {
+		pr_warn("Exynos5250: valid epll rate_table missing for\n"
+			"parent fin_pll:%lu hz\n", fin_pll_rate);
+		epll = samsung_clk_register_pll36xx("fout_epll", "fin_pll",
+				reg_base + 0x10030, NULL, 0);
+	}
+	samsung_clk_add_lookup(epll, fout_epll);
+
+	if (mout_vpllsrc_rate == (24 * MHZ)) {
+		vpll = samsung_clk_register_pll36xx("fout_vpll", "mout_vpllsrc"
+			, reg_base + 0x10040, vpll_24mhz_tbl,
+			ARRAY_SIZE(vpll_24mhz_tbl));
+	} else {
+		pr_warn("Exynos5250: valid vpll rate_table missing for\n"
+			"parent mout_vpllsrc_rate:%lu hz\n", mout_vpllsrc_rate);
+		samsung_clk_register_pll36xx("fout_vpll", "mout_vpllsrc",
+			reg_base + 0x10040, NULL, 0);
+	}
 
 	samsung_clk_register_fixed_rate(exynos5250_fixed_rate_clks,
 			ARRAY_SIZE(exynos5250_fixed_rate_clks));
