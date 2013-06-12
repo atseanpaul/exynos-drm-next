@@ -104,6 +104,20 @@ struct fimd_win_data {
 	bool			resume;
 };
 
+struct fimd_mode_data {
+	unsigned		vtotal;
+	unsigned		vdisplay;
+	unsigned		vsync_len;
+	unsigned		vbpd;
+	unsigned		vfpd;
+	unsigned		htotal;
+	unsigned		hdisplay;
+	unsigned		hsync_len;
+	unsigned		hbpd;
+	unsigned		hfpd;
+	u32			clkdiv;
+};
+
 struct fimd_context {
 	struct device			*dev;
 	struct drm_device		*drm_dev;
@@ -112,8 +126,8 @@ struct fimd_context {
 	struct clk			*bus_clk;
 	struct clk			*lcd_clk;
 	void __iomem			*regs;
+	struct fimd_mode_data		mode;
 	struct fimd_win_data		win_data[WINDOWS_NR];
-	unsigned int			clkdiv;
 	unsigned int			default_win;
 	unsigned long			irq_flags;
 	u32				vidcon0;
@@ -220,11 +234,56 @@ static void fimd_mgr_remove(struct exynos_drm_manager *mgr)
 		drm_iommu_detach_device(ctx->drm_dev, ctx->dev);
 }
 
+static u32 fimd_calc_clkdiv(struct fimd_context *ctx,
+		const struct drm_display_mode *mode)
+{
+	unsigned long ideal_clk = mode->htotal * mode->vtotal * mode->vrefresh;
+	u32 clkdiv;
+
+	/* Find the clock divider value that gets us closest to ideal_clk */
+	clkdiv = DIV_ROUND_CLOSEST(clk_get_rate(ctx->lcd_clk), ideal_clk);
+
+	return (clkdiv < 0x100) ? clkdiv : 0xff;
+}
+
+static bool fimd_mode_fixup(struct exynos_drm_manager *mgr,
+		const struct drm_display_mode *mode,
+		struct drm_display_mode *adjusted_mode)
+{
+	if (adjusted_mode->vrefresh == 0)
+		adjusted_mode->vrefresh = FIMD_DEFAULT_FRAMERATE;
+
+	return true;
+}
+
+static void fimd_mode_set(struct exynos_drm_manager *mgr,
+		const struct drm_display_mode *in_mode)
+{
+	struct fimd_context *ctx = mgr->ctx;
+	struct fimd_mode_data *mode = &ctx->mode;
+	int hblank, vblank;
+
+	vblank = in_mode->crtc_vblank_end - in_mode->crtc_vblank_start;
+	mode->vtotal = in_mode->crtc_vtotal;
+	mode->vdisplay = in_mode->crtc_vdisplay;
+	mode->vsync_len = in_mode->crtc_vsync_end - in_mode->crtc_vsync_start;
+	mode->vbpd = (vblank - mode->vsync_len) / 2;
+	mode->vfpd = vblank - mode->vsync_len - mode->vbpd;
+
+	hblank = in_mode->crtc_hblank_end - in_mode->crtc_hblank_start;
+	mode->htotal = in_mode->crtc_htotal;
+	mode->hdisplay = in_mode->crtc_hdisplay;
+	mode->hsync_len = in_mode->crtc_hsync_end - in_mode->crtc_hsync_start;
+	mode->hbpd = (hblank - mode->hsync_len) / 2;
+	mode->hfpd = hblank - mode->hsync_len - mode->hbpd;
+
+	mode->clkdiv = fimd_calc_clkdiv(ctx, in_mode);
+}
+
 static void fimd_commit(struct exynos_drm_manager *mgr)
 {
 	struct fimd_context *ctx = mgr->ctx;
-	struct exynos_drm_panel_info *panel = &ctx->panel;
-	struct videomode *vm = &panel->vm;
+	struct fimd_mode_data *mode = &ctx->mode;
 	struct fimd_driver_data *driver_data;
 	u32 val;
 
@@ -232,26 +291,30 @@ static void fimd_commit(struct exynos_drm_manager *mgr)
 	if (ctx->suspended)
 		return;
 
+	/* nothing to do if we haven't set the mode yet */
+	if (mode->htotal == 0 || mode->vtotal == 0)
+		return;
+
 	/* setup polarity values from machine code. */
 	writel(ctx->vidcon1, ctx->regs + driver_data->timing_base + VIDCON1);
 
 	/* setup vertical timing values. */
-	val = VIDTCON0_VBPD(vm->vback_porch - 1) |
-	       VIDTCON0_VFPD(vm->vfront_porch - 1) |
-	       VIDTCON0_VSPW(vm->vsync_len - 1);
+	val = VIDTCON0_VBPD(mode->vbpd - 1) |
+		VIDTCON0_VFPD(mode->vfpd - 1) |
+		VIDTCON0_VSPW(mode->vsync_len - 1);
 	writel(val, ctx->regs + driver_data->timing_base + VIDTCON0);
 
 	/* setup horizontal timing values.  */
-	val = VIDTCON1_HBPD(vm->hback_porch - 1) |
-	       VIDTCON1_HFPD(vm->hfront_porch - 1) |
-	       VIDTCON1_HSPW(vm->hsync_len - 1);
+	val = VIDTCON1_HBPD(mode->hbpd - 1) |
+		VIDTCON1_HFPD(mode->hfpd - 1) |
+		VIDTCON1_HSPW(mode->hsync_len - 1);
 	writel(val, ctx->regs + driver_data->timing_base + VIDTCON1);
 
 	/* setup horizontal and vertical display size. */
-	val = VIDTCON2_LINEVAL(vm->vactive - 1) |
-	       VIDTCON2_HOZVAL(vm->hactive - 1) |
-	       VIDTCON2_LINEVAL_E(vm->vactive - 1) |
-	       VIDTCON2_HOZVAL_E(vm->hactive - 1);
+	val = VIDTCON2_LINEVAL(mode->vdisplay - 1) |
+	       VIDTCON2_HOZVAL(mode->hdisplay - 1) |
+	       VIDTCON2_LINEVAL_E(mode->vdisplay - 1) |
+	       VIDTCON2_HOZVAL_E(mode->hdisplay - 1);
 	writel(val, ctx->regs + driver_data->timing_base + VIDTCON2);
 
 	/* setup clock source, clock divider, enable dma. */
@@ -263,8 +326,8 @@ static void fimd_commit(struct exynos_drm_manager *mgr)
 		val |= VIDCON0_CLKSEL_LCD;
 	}
 
-	if (ctx->clkdiv > 1)
-		val |= VIDCON0_CLKVAL_F(ctx->clkdiv - 1) | VIDCON0_CLKDIR;
+	if (mode->clkdiv > 1)
+		val |= VIDCON0_CLKVAL_F(mode->clkdiv - 1) | VIDCON0_CLKDIR;
 	else
 		val &= ~VIDCON0_CLKDIR;	/* 1:1 clock */
 
@@ -682,6 +745,8 @@ static struct exynos_drm_manager_ops fimd_manager_ops = {
 	.initialize = fimd_mgr_initialize,
 	.remove = fimd_mgr_remove,
 	.dpms = fimd_dpms,
+	.mode_fixup = fimd_mode_fixup,
+	.mode_set = fimd_mode_set,
 	.commit = fimd_commit,
 	.enable_vblank = fimd_enable_vblank,
 	.disable_vblank = fimd_disable_vblank,
@@ -721,56 +786,6 @@ static irqreturn_t fimd_irq_handler(int irq, void *dev_id)
 	}
 out:
 	return IRQ_HANDLED;
-}
-
-static int fimd_configure_clocks(struct fimd_context *ctx, struct device *dev)
-{
-	struct videomode *vm = &ctx->panel.vm;
-	unsigned long clk;
-
-	ctx->bus_clk = devm_clk_get(dev, "fimd");
-	if (IS_ERR(ctx->bus_clk)) {
-		dev_err(dev, "failed to get bus clock\n");
-		return PTR_ERR(ctx->bus_clk);
-	}
-
-	ctx->lcd_clk = devm_clk_get(dev, "sclk_fimd");
-	if (IS_ERR(ctx->lcd_clk)) {
-		dev_err(dev, "failed to get lcd clock\n");
-		return PTR_ERR(ctx->lcd_clk);
-	}
-
-	clk = clk_get_rate(ctx->lcd_clk);
-	if (clk == 0) {
-		dev_err(dev, "error getting sclk_fimd clock rate\n");
-		return -EINVAL;
-	}
-
-	if (vm->pixelclock == 0) {
-		unsigned long c;
-		c = vm->hactive + vm->hback_porch + vm->hfront_porch +
-		    vm->hsync_len;
-		c *= vm->vactive + vm->vback_porch + vm->vfront_porch +
-		     vm->vsync_len;
-		vm->pixelclock = c * FIMD_DEFAULT_FRAMERATE;
-		if (vm->pixelclock == 0) {
-			dev_err(dev, "incorrect display timings\n");
-			return -EINVAL;
-		}
-		dev_warn(dev, "pixel clock recalculated to %luHz (%dHz frame rate)\n",
-			 vm->pixelclock, FIMD_DEFAULT_FRAMERATE);
-	}
-	ctx->clkdiv = DIV_ROUND_UP(clk, vm->pixelclock);
-	if (ctx->clkdiv > 256) {
-		dev_warn(dev, "calculated pixel clock divider too high (%u), lowered to 256\n",
-			 ctx->clkdiv);
-		ctx->clkdiv = 256;
-	}
-	vm->pixelclock = clk / ctx->clkdiv;
-	DRM_DEBUG_KMS("pixel clock = %lu, clkdiv = %d\n", vm->pixelclock,
-		      ctx->clkdiv);
-
-	return 0;
 }
 
 static void fimd_clear_win(struct fimd_context *ctx, int win)
@@ -925,9 +940,17 @@ static int fimd_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = fimd_configure_clocks(ctx, dev);
-	if (ret)
-		return ret;
+	ctx->bus_clk = devm_clk_get(dev, "fimd");
+	if (IS_ERR(ctx->bus_clk)) {
+		dev_err(dev, "failed to get bus clock\n");
+		return PTR_ERR(ctx->bus_clk);
+	}
+
+	ctx->lcd_clk = devm_clk_get(dev, "sclk_fimd");
+	if (IS_ERR(ctx->lcd_clk)) {
+		dev_err(dev, "failed to get lcd clock\n");
+		return PTR_ERR(ctx->lcd_clk);
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
