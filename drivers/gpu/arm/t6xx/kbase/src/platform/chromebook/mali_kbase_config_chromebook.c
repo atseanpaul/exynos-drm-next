@@ -33,7 +33,6 @@
 #include <linux/fb.h>
 #include <linux/clk.h>
 #include <mach/regs-clock.h>
-#include <mach/pmu.h>
 #include <mach/regs-pmu.h>
 #include <asm/delay.h>
 #include <mach/map.h>
@@ -1166,7 +1165,7 @@ static ssize_t mali_sysfs_show_vol(struct device *dev,
 
 	return ret;
 }
-DEVICE_ATTR(vol, S_IRUGO|S_IWUSR, mali_sysfs_show_vol, NULL);
+DEVICE_ATTR(vol, S_IRUGO, mali_sysfs_show_vol, NULL);
 
 static int get_clkout_cmu_top(int *val)
 {
