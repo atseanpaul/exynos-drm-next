@@ -141,7 +141,7 @@ mali_error kbase_event_init(kbase_context *kctx)
 	INIT_LIST_HEAD(&kctx->event_list);
 	mutex_init(&kctx->event_mutex);
 	kctx->event_closed = MALI_FALSE;
-	kctx->event_workq = alloc_workqueue("kbase_event", WQ_RESCUER, 1);
+	kctx->event_workq = alloc_workqueue("kbase_event", WQ_MEM_RECLAIM, 1);
 
 	if (NULL == kctx->event_workq)
 		return MALI_ERROR_FUNCTION_FAILED;
