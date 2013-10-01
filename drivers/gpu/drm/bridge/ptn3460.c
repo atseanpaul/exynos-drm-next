@@ -186,6 +186,20 @@ struct drm_bridge_funcs ptn3460_bridge_funcs = {
 
 int ptn3460_get_modes(struct drm_connector *connector)
 {
+#if 1
+	struct ptn3460_bridge *ptn_bridge;
+	struct drm_display_mode mode = { DRM_MODE("ptntest", 0, 1446 * 696 * 60 /1000,
+			1366, 1406,
+			1446, 1478, 0, 668, 678, 690, 696, 0, 0) };
+	struct drm_display_mode *new_mode;
+
+	ptn_bridge = container_of(connector, struct ptn3460_bridge, connector);
+
+	new_mode = drm_mode_duplicate(connector->dev, &mode);
+	drm_mode_probed_add(connector, new_mode);
+
+	return 1;
+#else
 	struct ptn3460_bridge *ptn_bridge;
 	u8 *edid;
 	int ret, num_modes;
@@ -223,6 +237,7 @@ out:
 		ptn3460_disable(ptn_bridge->bridge);
 
 	return num_modes;
+#endif
 }
 
 static int ptn3460_mode_valid(struct drm_connector *connector,
