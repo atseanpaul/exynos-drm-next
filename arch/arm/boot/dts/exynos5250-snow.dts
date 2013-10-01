@@ -186,6 +186,19 @@
 		samsung,vbus-gpio = <&gpx1 1 0>;
 	};
 
+	dp-controller@145B0000 {
+		samsung,color-space = <0>;
+		samsung,dynamic-range = <0>;
+		samsung,ycbcr-coeff = <0>;
+		samsung,color-depth = <1>;
+		samsung,link-rate = <0x0a>;
+		samsung,lane-count = <2>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&dp_hpd>;
+		status = "okay";
+	};
+
 	fimd: fimd@14400000 {
 		status = "okay";
 		display-timings {
