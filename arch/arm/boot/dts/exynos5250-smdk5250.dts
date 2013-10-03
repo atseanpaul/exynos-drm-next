@@ -263,10 +263,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dp_hpd>;
 		status = "okay";
-	};
 
-	fimd@14400000 {
-		status = "okay";
 		display-timings {
 			native-mode = <&timing0>;
 			timing0: timing@0 {
@@ -282,6 +279,10 @@
 				vsync-len = <4>;
 			};
 		};
+	};
+
+	fimd@14400000 {
+		status = "okay";
 	};
 
 	fixed-rate-clocks {

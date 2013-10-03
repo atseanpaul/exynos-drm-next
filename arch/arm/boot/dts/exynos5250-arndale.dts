@@ -517,10 +517,7 @@
 		samsung,link-rate = <0x0a>;
 		samsung,lane-count = <4>;
 		status = "okay";
-	};
 
-	fimd: fimd@14400000 {
-		status = "okay";
 		display-timings {
 			native-mode = <&timing0>;
 			timing0: timing@0 {
@@ -536,6 +533,10 @@
 				vsync-len = <6>;
 			};
 		};
+	};
+
+	fimd: fimd@14400000 {
+		status = "okay";
 	};
 
 	usb_hub_bus {
