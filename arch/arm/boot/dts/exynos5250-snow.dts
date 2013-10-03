@@ -216,10 +216,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dp_hpd>;
 		status = "okay";
-	};
 
-	fimd: fimd@14400000 {
-		status = "okay";
 		display-timings {
 			native-mode = <&lcd_timing>;
 			lcd_timing: 1366x768 {
@@ -234,6 +231,10 @@
 				vsync-len = <6>;
 			};
 		};
+	};
+
+	fimd: fimd@14400000 {
+		status = "okay";
 	};
 
 	fixed-rate-clocks {

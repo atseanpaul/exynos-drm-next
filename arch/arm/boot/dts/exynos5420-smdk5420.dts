@@ -41,10 +41,7 @@
 		samsung,link-rate = <0x0a>;
 		samsung,lane-count = <4>;
 		status = "okay";
-	};
 
-	fimd@14400000 {
-		status = "okay";
 		display-timings {
 			native-mode = <&timing0>;
 			timing0: timing@0 {
@@ -86,5 +83,9 @@
 			compatible = "samsung,exynos4210-hdmiddc";
 			reg = <0x50>;
 		};
+	};
+
+	fimd@14400000 {
+		status = "okay";
 	};
 };
