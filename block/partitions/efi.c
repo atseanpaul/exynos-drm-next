@@ -226,7 +226,8 @@ check_hybrid:
 	if (ret == GPT_MBR_PROTECTIVE) {
 		sz = le32_to_cpu(mbr->partition_record[part].size_in_lba);
 		if (sz != (uint32_t) total_sectors - 1 && sz != 0xFFFFFFFF)
-			ret = 0;
+			pr_warn("%s sz=%lu, total_sectors - 1=%lld\n", __func__,
+				sz, (uint32_t) total_sectors - 1);
 	}
 done:
 	return ret;
