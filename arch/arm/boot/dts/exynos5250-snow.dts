@@ -193,6 +193,13 @@
 		samsung,vbus-gpio = <&gpx1 1 0>;
 	};
 
+	hdmi {
+		hdmi-en-supply = <&ldo8_reg>;
+		vdd-supply = <&ldo8_reg>;
+		vdd_osc-supply = <&ldo10_reg>;
+		vdd_pll-supply = <&ldo8_reg>;
+	};
+
 	i2c@12CD0000 {
 		lvds-bridge@20 {
 			compatible = "nxp,ptn3460";
