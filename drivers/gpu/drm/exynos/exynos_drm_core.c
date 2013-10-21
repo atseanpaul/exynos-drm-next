@@ -14,7 +14,6 @@
 
 #include <linux/i2c.h>
 #include <drm/drmP.h>
-#include <drm/bridge/ptn3460.h>
 #include "exynos_drm_drv.h"
 #include "exynos_drm_crtc.h"
 #include "exynos_drm_encoder.h"
@@ -24,40 +23,6 @@
 static LIST_HEAD(exynos_drm_subdrv_list);
 static LIST_HEAD(exynos_drm_manager_list);
 static LIST_HEAD(exynos_drm_display_list);
-
-struct bridge_init {
-	struct i2c_client *client;
-	struct device_node *node;
-};
-
-static bool find_bridge(const char *compat, struct bridge_init *bridge)
-{
-	bridge->client = NULL;
-	bridge->node = of_find_compatible_node(NULL, NULL, compat);
-	if (!bridge->node)
-		return false;
-
-	bridge->client = of_find_i2c_device_by_node(bridge->node);
-	if (!bridge->client)
-		return false;
-
-	return true;
-}
-
-/* returns the number of bridges attached */
-static int exynos_drm_attach_lcd_bridge(struct drm_device *dev,
-		struct drm_encoder *encoder)
-{
-	struct bridge_init bridge;
-	int ret;
-
-	if (find_bridge("nxp,ptn3460", &bridge)) {
-		ret = ptn3460_init(dev, encoder, bridge.client, bridge.node);
-		if (!ret)
-			return 1;
-	}
-	return 0;
-}
 
 static int exynos_drm_create_enc_conn(struct drm_device *dev,
 					struct exynos_drm_display *display)
@@ -80,12 +45,6 @@ static int exynos_drm_create_enc_conn(struct drm_device *dev,
 		return -EFAULT;
 	}
 	display->encoder = encoder;
-
-	if (display->type == EXYNOS_DISPLAY_TYPE_LCD) {
-		ret = exynos_drm_attach_lcd_bridge(dev, encoder);
-		if (ret)
-			return 0;
-	}
 
 	if (display->ops->create_connector)
 		return display->ops->create_connector(display, encoder);
