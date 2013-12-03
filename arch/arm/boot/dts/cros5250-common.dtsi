@@ -201,7 +201,7 @@
 		samsung,i2c-sda-delay = <100>;
 		samsung,i2c-max-bus-freq = <66000>;
 
-		hdmiddc@50 {
+		hdmi_ddc_node: hdmiddc@50 {
 			compatible = "samsung,exynos4210-hdmiddc";
 			reg = <0x50>;
 		};
@@ -235,7 +235,7 @@
 		samsung,i2c-sda-delay = <100>;
 		samsung,i2c-max-bus-freq = <378000>;
 
-		hdmiphy@38 {
+		hdmi_phy_node: hdmiphy@38 {
 			compatible = "samsung,exynos4212-hdmiphy";
 			reg = <0x38>;
 		};
@@ -313,6 +313,8 @@
 
 	hdmi {
 		hpd-gpio = <&gpx3 7 0>;
+		ddc = <&hdmi_ddc_node>;
+		phy = <&hdmi_phy_node>;
 	};
 
 	gpio-keys {
