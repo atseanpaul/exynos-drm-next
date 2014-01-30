@@ -379,7 +379,7 @@ static const struct hdmiphy_config hdmiphy_v14_configs[] = {
 	},
 };
 
-struct hdmi_infoframe {
+struct exynos_hdmi_infoframe {
 	enum HDMI_PACKET_TYPE type;
 	u8 ver;
 	u8 len;
@@ -682,7 +682,7 @@ static u8 hdmi_chksum(struct hdmi_context *hdata,
 }
 
 static void hdmi_reg_infoframe(struct hdmi_context *hdata,
-			struct hdmi_infoframe *infoframe)
+			struct exynos_hdmi_infoframe *infoframe)
 {
 	u32 hdr_sum;
 	u8 chksum;
@@ -985,7 +985,7 @@ static void hdmi_conf_reset(struct hdmi_context *hdata)
 
 static void hdmi_conf_init(struct hdmi_context *hdata)
 {
-	struct hdmi_infoframe infoframe;
+	struct exynos_hdmi_infoframe infoframe;
 
 	/* disable HPD interrupts from HDMI IP block, use GPIO instead */
 	hdmi_reg_writemask(hdata, HDMI_INTC_CON, 0, HDMI_INTC_EN_GLOBAL |
